@@ -7,7 +7,19 @@
 
 ## [未リリース]
 
-<!-- 次のリリースに含める変更をここに追加 -->
+なし
+
+## [1.0.2] - 2026-01-02
+
+### 変更
+
+- **Swift 6.2 対応**: Swift 6.2 安定版に対応
+  - `swift-tools-version`: 6.0 → 6.2
+  - `swift-syntax`: 600.0.0 → 602.0.0
+
+### CI
+
+- **Linux x86_64 テスト追加**: `swift:6.2-bookworm` コンテナでテスト実行
 
 ## [1.0.1] - 2026-01-02
 
@@ -54,7 +66,8 @@
 - RELEASE_PROCESS.md
 - DocCドキュメント
 
-[未リリース]: https://github.com/no-problem-dev/swift-env/compare/v1.0.1...HEAD
+[未リリース]: https://github.com/no-problem-dev/swift-env/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/no-problem-dev/swift-env/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/no-problem-dev/swift-env/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/no-problem-dev/swift-env/releases/tag/v1.0.0
 
