@@ -9,6 +9,19 @@
 
 <!-- 次のリリースに含める変更をここに追加 -->
 
+## [1.0.1] - 2026-01-02
+
+### 追加
+
+- **`@EnvGroup` マクロ**: 複数の `@Env` 構造体を集約するファサード構造体を生成
+  - `static func load()` メソッドを自動生成し、全ネスト設定を一括読み込み
+  - ネストした `@Env` および `@EnvGroup` 構造体をサポート
+  - 統一されたエントリーポイントでアプリケーション設定を簡潔に管理
+
+### テスト
+
+- EnvGroup マクロ展開テスト追加
+
 ## [1.0.0] - 2025-01-02
 
 ### 追加
@@ -41,7 +54,8 @@
 - RELEASE_PROCESS.md
 - DocCドキュメント
 
-[未リリース]: https://github.com/no-problem-dev/swift-env/compare/v1.0.0...HEAD
+[未リリース]: https://github.com/no-problem-dev/swift-env/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/no-problem-dev/swift-env/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/no-problem-dev/swift-env/releases/tag/v1.0.0
 
 <!-- Release v1.0.0 prepared on 2026-01-02T03:18:58Z -->
