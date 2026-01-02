@@ -6,5 +6,6 @@ struct EnvMacrosPlugin: CompilerPlugin {
     let providingMacros: [Macro.Type] = [
         EnvMacro.self,
         ValueMacro.self,
+        EnvGroupMacro.self,
     ]
 }

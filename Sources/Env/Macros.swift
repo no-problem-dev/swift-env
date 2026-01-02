@@ -1,5 +1,26 @@
 @_exported import Configuration
 
+// MARK: - EnvConfigurable Protocol
+
+/// 環境変数から初期化可能な型を表すプロトコル
+///
+/// `@Env` マクロを適用した構造体は自動的にこのプロトコルに準拠します。
+/// `@EnvGroup` マクロはこのプロトコルを使用して、子の設定を初期化します。
+///
+/// ## 自動準拠
+///
+/// ```swift
+/// @Env
+/// struct GCPConfig {  // 自動的に EnvConfigurable に準拠
+///     @Value("gcp.project.id", default: "my-project")
+///     var projectId: String
+/// }
+/// ```
+public protocol EnvConfigurable: Sendable {
+    /// ConfigReader から設定を読み込んで初期化
+    init(config: ConfigReader)
+}
+
 // MARK: - @Env Macro
 
 /// 環境変数から型安全に値を読み取る構造体を定義するマクロ
@@ -8,7 +29,7 @@
 /// - `init(config: ConfigReader)` イニシャライザ
 /// - 各プロパティのKeys enum（ConfigKey型）
 /// - 各プロパティのDefaults enum
-/// - `Sendable` プロトコル準拠
+/// - `EnvConfigurable` プロトコル準拠（`Sendable` を含む）
 ///
 /// ## 基本的な使用例
 ///
@@ -48,7 +69,7 @@
 ///
 /// - Parameter scope: 環境変数のスコープ（プレフィックス）。省略時はルートレベル
 @attached(member, names: named(Keys), named(Defaults), named(init))
-@attached(extension, conformances: Sendable)
+@attached(extension, conformances: EnvConfigurable)
 public macro Env(
     scope: String? = nil
 ) = #externalMacro(module: "EnvMacros", type: "EnvMacro")
@@ -90,9 +111,75 @@ public macro Env(
 /// - `Int`
 /// - `Double`
 /// - `Bool`
+/// - `RawRepresentable where RawValue == String` (enum)
+///
+/// ## Enum の使用例
+///
+/// ```swift
+/// enum AppEnvironment: String {
+///     case development, staging, production
+/// }
+///
+/// @Env
+/// struct AppConfig {
+///     @Value("app.environment", default: .development)
+///     var environment: AppEnvironment
+/// }
+/// ```
 ///
 /// - Parameters:
 ///   - key: 環境変数のキー（ドット区切り形式）
 ///   - default: 環境変数が未設定の場合のデフォルト値
 @attached(peer)
 public macro Value<T>(_ key: String, default: T) = #externalMacro(module: "EnvMacros", type: "ValueMacro")
+
+// MARK: - @EnvGroup Macro
+
+/// 複数の `@Env` 構造体をグループ化するマクロ
+///
+/// このマクロを構造体に適用すると、以下が自動生成されます:
+/// - `init(config: ConfigReader)` イニシャライザ
+/// - `static func load() -> Self` ファクトリメソッド
+/// - `EnvConfigurable` プロトコル準拠
+///
+/// ## 基本的な使用例
+///
+/// ```swift
+/// @EnvGroup
+/// public struct AppConfig {
+///     let gcp: GCPConfig
+///     let emulator: EmulatorConfig
+///     let server: ServerConfig
+/// }
+///
+/// // 使用
+/// let config = AppConfig.load()
+/// print(config.gcp.projectId)
+/// ```
+///
+/// ## スコープ付きの使用例
+///
+/// ```swift
+/// @EnvGroup(scope: "database")
+/// struct DatabaseConfig {
+///     let primary: PrimaryDBConfig   // DATABASE_PRIMARY_* を読む
+///     let replica: ReplicaDBConfig   // DATABASE_REPLICA_* を読む
+/// }
+/// ```
+///
+/// ## ネストした使用例
+///
+/// ```swift
+/// @EnvGroup
+/// public struct AppConfig {
+///     let gcp: GCPConfig
+///     let database: DatabaseConfig  // ネストされた EnvGroup
+/// }
+/// ```
+///
+/// - Parameter scope: 環境変数のスコープ（プレフィックス）。省略時はルートレベル
+@attached(member, names: named(init), named(load))
+@attached(extension, conformances: EnvConfigurable)
+public macro EnvGroup(
+    scope: String? = nil
+) = #externalMacro(module: "EnvMacros", type: "EnvGroupMacro")
