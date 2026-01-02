@@ -45,3 +45,5 @@
 [1.0.0]: https://github.com/no-problem-dev/swift-env/releases/tag/v1.0.0
 
 <!-- Release v1.0.0 prepared on 2026-01-02T03:18:58Z -->
+
+<!-- Auto-generated on 2026-01-02T04:14:21Z by release workflow -->
