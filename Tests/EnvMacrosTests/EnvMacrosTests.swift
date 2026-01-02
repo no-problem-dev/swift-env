@@ -10,6 +10,7 @@ import EnvMacros
 nonisolated(unsafe) let testMacros: [String: Macro.Type] = [
     "Env": EnvMacro.self,
     "Value": ValueMacro.self,
+    "EnvGroup": EnvGroupMacro.self,
 ]
 #endif
 
@@ -44,7 +45,7 @@ final class EnvMacrosTests: XCTestCase {
                 }
             }
 
-            extension TestConfig: Sendable {
+            extension TestConfig: EnvConfigurable {
             }
             """,
             macros: testMacros
@@ -81,7 +82,7 @@ final class EnvMacrosTests: XCTestCase {
                 }
             }
 
-            extension ServerConfig: Sendable {
+            extension ServerConfig: EnvConfigurable {
             }
             """,
             macros: testMacros
@@ -118,7 +119,7 @@ final class EnvMacrosTests: XCTestCase {
                 }
             }
 
-            extension FeatureFlags: Sendable {
+            extension FeatureFlags: EnvConfigurable {
             }
             """,
             macros: testMacros
@@ -155,7 +156,7 @@ final class EnvMacrosTests: XCTestCase {
                 }
             }
 
-            extension GameBalance: Sendable {
+            extension GameBalance: EnvConfigurable {
             }
             """,
             macros: testMacros
@@ -201,7 +202,7 @@ final class EnvMacrosTests: XCTestCase {
                 }
             }
 
-            extension GCPConfig: Sendable {
+            extension GCPConfig: EnvConfigurable {
             }
             """,
             macros: testMacros
@@ -248,7 +249,7 @@ final class EnvMacrosTests: XCTestCase {
                 }
             }
 
-            extension EmulatorConfig: Sendable {
+            extension EmulatorConfig: EnvConfigurable {
             }
             """,
             macros: testMacros
@@ -294,7 +295,7 @@ final class EnvMacrosTests: XCTestCase {
                 }
             }
 
-            extension GCPConfig: Sendable {
+            extension GCPConfig: EnvConfigurable {
             }
             """,
             macros: testMacros
@@ -345,7 +346,7 @@ final class EnvMacrosTests: XCTestCase {
                 }
             }
 
-            extension GameBalanceConfig: Sendable {
+            extension GameBalanceConfig: EnvConfigurable {
             }
             """,
             macros: testMacros
@@ -369,7 +370,7 @@ final class EnvMacrosTests: XCTestCase {
             struct EmptyConfig {
             }
 
-            extension EmptyConfig: Sendable {
+            extension EmptyConfig: EnvConfigurable {
             }
             """,
             macros: testMacros
@@ -406,7 +407,7 @@ final class EnvMacrosTests: XCTestCase {
                 }
             }
 
-            extension SingleConfig: Sendable {
+            extension SingleConfig: EnvConfigurable {
             }
             """,
             macros: testMacros
@@ -466,7 +467,280 @@ final class EnvMacrosTests: XCTestCase {
                 }
             }
 
-            extension AllTypesConfig: Sendable {
+            extension AllTypesConfig: EnvConfigurable {
+            }
+            """,
+            macros: testMacros
+        )
+        #else
+        throw XCTSkip("macros are only supported when running tests for the host platform")
+        #endif
+    }
+
+    // MARK: - RawRepresentable Enum Tests
+
+    func testEnvEnumProperty() throws {
+        #if canImport(EnvMacros)
+        assertMacroExpansion(
+            """
+            @Env
+            struct AppConfig {
+                @Value("app.environment", default: .development)
+                var environment: AppEnvironment
+            }
+            """,
+            expandedSource: """
+            struct AppConfig {
+                var environment: AppEnvironment
+
+                private enum Keys {
+                    static let environment: ConfigKey = "app.environment"
+                }
+
+                private enum Defaults {
+                    static let environment: AppEnvironment = .development
+                }
+
+                public init(config: ConfigReader) {
+                    self.environment = AppEnvironment(rawValue: config.string(forKey: Keys.environment, default: Defaults.environment.rawValue)) ?? Defaults.environment
+                }
+            }
+
+            extension AppConfig: EnvConfigurable {
+            }
+            """,
+            macros: testMacros
+        )
+        #else
+        throw XCTSkip("macros are only supported when running tests for the host platform")
+        #endif
+    }
+
+    func testEnvEnumWithOtherProperties() throws {
+        #if canImport(EnvMacros)
+        assertMacroExpansion(
+            """
+            @Env
+            struct AppConfig {
+                @Value("gcp.project.id", default: "my-project")
+                var projectId: String
+
+                @Value("app.environment", default: .production)
+                var environment: AppEnvironment
+
+                @Value("server.port", default: 8080)
+                var port: Int
+            }
+            """,
+            expandedSource: """
+            struct AppConfig {
+                var projectId: String
+                var environment: AppEnvironment
+                var port: Int
+
+                private enum Keys {
+                    static let projectId: ConfigKey = "gcp.project.id"
+                    static let environment: ConfigKey = "app.environment"
+                    static let port: ConfigKey = "server.port"
+                }
+
+                private enum Defaults {
+                    static let projectId = "my-project"
+                    static let environment: AppEnvironment = .production
+                    static let port = 8080
+                }
+
+                public init(config: ConfigReader) {
+                    self.projectId = config.string(forKey: Keys.projectId, default: Defaults.projectId)
+                    self.environment = AppEnvironment(rawValue: config.string(forKey: Keys.environment, default: Defaults.environment.rawValue)) ?? Defaults.environment
+                    self.port = config.int(forKey: Keys.port, default: Defaults.port)
+                }
+            }
+
+            extension AppConfig: EnvConfigurable {
+            }
+            """,
+            macros: testMacros
+        )
+        #else
+        throw XCTSkip("macros are only supported when running tests for the host platform")
+        #endif
+    }
+
+    func testEnvEnumWithScope() throws {
+        #if canImport(EnvMacros)
+        assertMacroExpansion(
+            """
+            @Env(scope: "app")
+            struct ScopedConfig {
+                @Value("environment", default: .staging)
+                var environment: Environment
+            }
+            """,
+            expandedSource: """
+            struct ScopedConfig {
+                var environment: Environment
+
+                private enum Keys {
+                    static let environment: ConfigKey = "environment"
+                }
+
+                private enum Defaults {
+                    static let environment: Environment = .staging
+                }
+
+                public init(config: ConfigReader) {
+                    let scopedConfig = config.scoped(to: "app")
+                    self.environment = Environment(rawValue: scopedConfig.string(forKey: Keys.environment, default: Defaults.environment.rawValue)) ?? Defaults.environment
+                }
+            }
+
+            extension ScopedConfig: EnvConfigurable {
+            }
+            """,
+            macros: testMacros
+        )
+        #else
+        throw XCTSkip("macros are only supported when running tests for the host platform")
+        #endif
+    }
+
+    func testEnvEnumWithQualifiedDefault() throws {
+        #if canImport(EnvMacros)
+        assertMacroExpansion(
+            """
+            @Env
+            struct AppConfig {
+                @Value("app.environment", default: AppEnvironment.development)
+                var environment: AppEnvironment
+            }
+            """,
+            expandedSource: """
+            struct AppConfig {
+                var environment: AppEnvironment
+
+                private enum Keys {
+                    static let environment: ConfigKey = "app.environment"
+                }
+
+                private enum Defaults {
+                    static let environment = AppEnvironment.development
+                }
+
+                public init(config: ConfigReader) {
+                    self.environment = AppEnvironment(rawValue: config.string(forKey: Keys.environment, default: Defaults.environment.rawValue)) ?? Defaults.environment
+                }
+            }
+
+            extension AppConfig: EnvConfigurable {
+            }
+            """,
+            macros: testMacros
+        )
+        #else
+        throw XCTSkip("macros are only supported when running tests for the host platform")
+        #endif
+    }
+
+    // MARK: - EnvGroup Tests
+
+    func testEnvGroupBasic() throws {
+        #if canImport(EnvMacros)
+        assertMacroExpansion(
+            """
+            @EnvGroup
+            struct AppConfig {
+                let gcp: GCPConfig
+                let server: ServerConfig
+            }
+            """,
+            expandedSource: """
+            struct AppConfig {
+                let gcp: GCPConfig
+                let server: ServerConfig
+
+                public init(config: ConfigReader) {
+                    self.gcp = GCPConfig(config: config)
+                    self.server = ServerConfig(config: config)
+                }
+
+                public static func load() -> Self {
+                    let reader = ConfigReader(provider: EnvironmentVariablesProvider())
+                    return Self(config: reader)
+                }
+            }
+
+            extension AppConfig: EnvConfigurable {
+            }
+            """,
+            macros: testMacros
+        )
+        #else
+        throw XCTSkip("macros are only supported when running tests for the host platform")
+        #endif
+    }
+
+    func testEnvGroupWithScope() throws {
+        #if canImport(EnvMacros)
+        assertMacroExpansion(
+            """
+            @EnvGroup(scope: "database")
+            struct DatabaseConfig {
+                let primary: PrimaryDBConfig
+                let replica: ReplicaDBConfig
+            }
+            """,
+            expandedSource: """
+            struct DatabaseConfig {
+                let primary: PrimaryDBConfig
+                let replica: ReplicaDBConfig
+
+                public init(config: ConfigReader) {
+                    let scopedConfig = config.scoped(to: "database")
+                    self.primary = PrimaryDBConfig(config: scopedConfig)
+                    self.replica = ReplicaDBConfig(config: scopedConfig)
+                }
+
+                public static func load() -> Self {
+                    let reader = ConfigReader(provider: EnvironmentVariablesProvider())
+                    return Self(config: reader)
+                }
+            }
+
+            extension DatabaseConfig: EnvConfigurable {
+            }
+            """,
+            macros: testMacros
+        )
+        #else
+        throw XCTSkip("macros are only supported when running tests for the host platform")
+        #endif
+    }
+
+    func testEnvGroupSingleProperty() throws {
+        #if canImport(EnvMacros)
+        assertMacroExpansion(
+            """
+            @EnvGroup
+            public struct SimpleConfig {
+                let gcp: GCPConfig
+            }
+            """,
+            expandedSource: """
+            public struct SimpleConfig {
+                let gcp: GCPConfig
+
+                public init(config: ConfigReader) {
+                    self.gcp = GCPConfig(config: config)
+                }
+
+                public static func load() -> Self {
+                    let reader = ConfigReader(provider: EnvironmentVariablesProvider())
+                    return Self(config: reader)
+                }
+            }
+
+            extension SimpleConfig: EnvConfigurable {
             }
             """,
             macros: testMacros

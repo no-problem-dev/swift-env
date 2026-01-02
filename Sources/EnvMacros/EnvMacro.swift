@@ -190,7 +190,13 @@ extension EnvMacro: MemberMacro {
         lines.append("private enum Defaults {")
 
         for prop in properties {
-            lines.append("    static let \(prop.name) = \(prop.defaultValue)")
+            // enum型の場合は型注釈を追加（shorthand形式のみ）
+            // qualified形式（TypeName.case）はそのまま使用可能
+            if prop.defaultValue.hasPrefix(".") {
+                lines.append("    static let \(prop.name): \(prop.typeName) = \(prop.defaultValue)")
+            } else {
+                lines.append("    static let \(prop.name) = \(prop.defaultValue)")
+            }
         }
 
         lines.append("}")
@@ -212,8 +218,8 @@ extension EnvMacro: MemberMacro {
         let configVar = scope != nil ? "scopedConfig" : "config"
 
         for prop in properties {
-            let methodName = getConfigMethodName(for: prop.typeName)
-            lines.append("    self.\(prop.name) = \(configVar).\(methodName)(forKey: Keys.\(prop.name), default: Defaults.\(prop.name))")
+            let assignment = generatePropertyAssignment(prop: prop, configVar: configVar)
+            lines.append("    \(assignment)")
         }
 
         lines.append("}")
@@ -221,8 +227,41 @@ extension EnvMacro: MemberMacro {
         return DeclSyntax(stringLiteral: lines.joined(separator: "\n"))
     }
 
-    /// 型に応じたConfigReaderメソッド名を取得
-    private static func getConfigMethodName(for typeName: String) -> String {
+    /// プロパティの代入コードを生成
+    private static func generatePropertyAssignment(prop: PropertyInfo, configVar: String) -> String {
+        // 基本型の判定
+        if let methodName = getPrimitiveMethodName(for: prop.typeName) {
+            return "self.\(prop.name) = \(configVar).\(methodName)(forKey: Keys.\(prop.name), default: Defaults.\(prop.name))"
+        }
+
+        // RawRepresentable enum の判定:
+        // - `.development` (shorthand)
+        // - `AppEnvironment.development` (qualified)
+        if isEnumDefaultValue(prop.defaultValue, typeName: prop.typeName) {
+            // enum型として処理
+            // 生成コード: self.prop = Type(rawValue: config.string(...)) ?? Defaults.prop
+            return "self.\(prop.name) = \(prop.typeName)(rawValue: \(configVar).string(forKey: Keys.\(prop.name), default: Defaults.\(prop.name).rawValue)) ?? Defaults.\(prop.name)"
+        }
+
+        // その他の型はstringにフォールバック
+        return "self.\(prop.name) = \(configVar).string(forKey: Keys.\(prop.name), default: Defaults.\(prop.name))"
+    }
+
+    /// デフォルト値がenum caseかどうかを判定
+    private static func isEnumDefaultValue(_ defaultValue: String, typeName: String) -> Bool {
+        // `.development` 形式
+        if defaultValue.hasPrefix(".") {
+            return true
+        }
+        // `TypeName.caseName` 形式
+        if defaultValue.hasPrefix("\(typeName).") {
+            return true
+        }
+        return false
+    }
+
+    /// 基本型に応じたConfigReaderメソッド名を取得
+    private static func getPrimitiveMethodName(for typeName: String) -> String? {
         switch typeName {
         case "String":
             return "string"
@@ -233,8 +272,7 @@ extension EnvMacro: MemberMacro {
         case "Bool":
             return "bool"
         default:
-            // 未対応の型はstringにフォールバック
-            return "string"
+            return nil
         }
     }
 }
@@ -250,7 +288,7 @@ extension EnvMacro: ExtensionMacro {
         in context: some MacroExpansionContext
     ) throws -> [ExtensionDeclSyntax] {
         let ext: DeclSyntax = """
-            extension \(type.trimmed): Sendable {}
+            extension \(type.trimmed): EnvConfigurable {}
             """
 
         guard let extensionDecl = ext.as(ExtensionDeclSyntax.self) else {
