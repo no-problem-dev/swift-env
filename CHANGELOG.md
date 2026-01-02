@@ -9,6 +9,12 @@
 
 なし
 
+## [1.0.3] - 2026-01-02
+
+### 変更
+
+- **依存関係指定を `.upToNextMajor` に統一**
+
 ## [1.0.2] - 2026-01-02
 
 ### 変更
@@ -66,7 +72,8 @@
 - RELEASE_PROCESS.md
 - DocCドキュメント
 
-[未リリース]: https://github.com/no-problem-dev/swift-env/compare/v1.0.2...HEAD
+[未リリース]: https://github.com/no-problem-dev/swift-env/compare/v1.0.3...HEAD
+[1.0.3]: https://github.com/no-problem-dev/swift-env/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/no-problem-dev/swift-env/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/no-problem-dev/swift-env/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/no-problem-dev/swift-env/releases/tag/v1.0.0
