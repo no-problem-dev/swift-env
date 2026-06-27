@@ -93,7 +93,7 @@ struct ServerConfig {
     }
 }
 
-extension ServerConfig: Sendable {}
+extension ServerConfig: EnvConfigurable {}
 ```
 
 ### `@Env(scope:)`

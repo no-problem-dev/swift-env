@@ -48,8 +48,13 @@ struct GCPConfig {
 
 ### マクロ
 
-- ``Env(_:)``
+- ``Env(scope:)``
 - ``Value(_:default:)``
+- ``EnvGroup(scope:)``
+
+### プロトコル
+
+- ``EnvConfigurable``
 
 ### 使用例
 
