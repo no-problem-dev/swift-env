@@ -1,11 +1,11 @@
 # はじめに
 
-環境変数設定を宣言的に定義する方法を学びます。
+環境変数設定を宣言的に定義する方法を学ぶ。
 
 ## 概要
 
 Envパッケージは、`@Env` と `@Value` マクロを使用して、
-環境変数から設定を読み込む構造体を宣言的に定義できます。
+環境変数から設定を読み込む構造体を宣言的に定義できる。
 
 ## 基本的な使い方
 
@@ -39,7 +39,7 @@ print("サーバー: \(server.host):\(server.port)")
 
 ## サポートされる型
 
-`@Value` マクロは以下の型をサポートします：
+`@Value` マクロは以下の型をサポートする：
 
 | 型 | ConfigReaderメソッド | 例 |
 |---|---|---|
@@ -47,10 +47,11 @@ print("サーバー: \(server.host):\(server.port)")
 | `Int` | `int(forKey:default:)` | `8080` |
 | `Double` | `double(forKey:default:)` | `0.05` |
 | `Bool` | `bool(forKey:default:)` | `false` |
+| `RawRepresentable where RawValue == String` | 文字列→`Type(rawValue:) ?? default` | `.development` |
 
 ## 環境変数名のマッピング
 
-キーはドット区切りで指定し、以下のルールで環境変数名に変換されます：
+キーはドット区切りで指定し、以下のルールで環境変数名に変換される：
 
 | キー | 環境変数名 |
 |---|---|

@@ -1,11 +1,11 @@
 # スコープ付き設定
 
-キープレフィックスを持つ設定グループの定義方法を学びます。
+キープレフィックスを持つ設定グループの定義方法を学ぶ。
 
 ## 概要
 
 関連する設定をグループ化する場合、`@Env(scope:)` を使用して
-キープレフィックスを指定できます。
+キープレフィックスを指定できる。
 
 ## スコープの使い方
 
@@ -32,7 +32,7 @@ struct EmulatorConfig {
 
 ### 環境変数との対応
 
-`scope: "emulator"` を指定すると、以下のように環境変数名が生成されます：
+`scope: "emulator"` を指定すると、以下のように環境変数名が生成される：
 
 | キー | 環境変数名 |
 |---|---|
@@ -55,7 +55,7 @@ print("Auth: \(emulator.authHost):\(emulator.authPort)")
 
 ## 展開されるコード
 
-`@Env(scope: "emulator")` は以下のようなコードを生成します：
+`@Env(scope: "emulator")` は以下のようなコードを生成する：
 
 ```swift
 struct EmulatorConfig {
@@ -87,7 +87,7 @@ struct EmulatorConfig {
     }
 }
 
-extension EmulatorConfig: Sendable {}
+extension EmulatorConfig: EnvConfigurable {}
 ```
 
 ## 複数設定の組み合わせ

@@ -1,21 +1,23 @@
+English | [日本語](./README.ja.md)
+
 # swift-env
 
-Swiftマクロによる環境変数設定の宣言的アクセス。Apple [swift-configuration](https://github.com/apple/swift-configuration) をラップし、ボイラープレートを削減します。
+Declarative access to environment variable configuration via Swift macros. Wraps Apple [swift-configuration](https://github.com/apple/swift-configuration) to eliminate boilerplate.
 
 ![Swift 6.0+](https://img.shields.io/badge/Swift-6.0+-orange.svg)
 ![macOS 15+](https://img.shields.io/badge/macOS-15+-purple.svg)
 ![iOS 18+](https://img.shields.io/badge/iOS-18+-blue.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 
-## 特徴
+## Features
 
-- **宣言的**: `@Env` と `@Value` マクロで設定を宣言するだけ
-- **型安全**: String, Int, Double, Bool をサポート
-- **DI対応**: `init(config: ConfigReader)` で依存性注入
-- **スコープ対応**: `@Env(scope: "prefix")` でキープレフィックスを指定
-- **ゼロランタイムオーバーヘッド**: コンパイル時コード生成
+- **Declarative**: just annotate a struct with `@Env` and its properties with `@Value`
+- **Type-safe**: supports `String`, `Int`, `Double`, `Bool`, and `RawRepresentable` enums
+- **DI-friendly**: `init(config: ConfigReader)` makes injection straightforward
+- **Scope support**: `@Env(scope: "prefix")` prepends a key prefix automatically
+- **Zero runtime overhead**: all code is generated at compile time
 
-## クイックスタート
+## Quick Start
 
 ```swift
 import Env
@@ -29,17 +31,17 @@ struct GCPConfig {
     var useEmulator: Bool
 }
 
-// 使用例
+// Usage
 let config = ConfigReader(provider: EnvironmentVariablesProvider())
 let gcp = GCPConfig(config: config)
-print(gcp.projectId)  // 環境変数 GCP_PROJECT_ID または "my-project"
+print(gcp.projectId)  // reads GCP_PROJECT_ID, falls back to "my-project"
 ```
 
-## インストール
+## Installation
 
 ### Swift Package Manager
 
-`Package.swift` に以下を追加：
+Add to `Package.swift`:
 
 ```swift
 dependencies: [
@@ -47,7 +49,7 @@ dependencies: [
 ]
 ```
 
-ターゲットに追加：
+Add to your target:
 
 ```swift
 .target(
@@ -58,16 +60,16 @@ dependencies: [
 )
 ```
 
-## マクロ詳細
+## Macros
 
 ### `@Env`
 
-構造体に付与し、以下を自動生成します：
+Apply to a struct to auto-generate:
 
-- `Keys` enum: ConfigKey型の静的プロパティ
-- `Defaults` enum: デフォルト値の静的プロパティ
-- `init(config: ConfigReader)`: 初期化メソッド
-- `Sendable` プロトコル準拠
+- `Keys` enum — `ConfigKey`-typed static properties
+- `Defaults` enum — default value static properties
+- `init(config: ConfigReader)` initializer
+- `EnvConfigurable` conformance (which includes `Sendable`)
 
 ```swift
 @Env
@@ -76,7 +78,7 @@ struct ServerConfig {
     var port: Int
 }
 
-// ↓ 展開結果
+// Expands to:
 struct ServerConfig {
     var port: Int
 
@@ -98,7 +100,7 @@ extension ServerConfig: EnvConfigurable {}
 
 ### `@Env(scope:)`
 
-スコープを指定すると、初期化時に `config.scoped(to:)` を呼び出します：
+Providing a scope causes the initializer to call `config.scoped(to:)` internally:
 
 ```swift
 @Env(scope: "emulator")
@@ -110,45 +112,62 @@ struct EmulatorConfig {
     var firestorePort: Int
 }
 
-// 使用時は root config を渡す（スコープは内部で処理）
+// Pass the root config — scoping is handled internally
 let emulator = EmulatorConfig(config: config)
-// EMULATOR_FIRESTORE_HOST, EMULATOR_FIRESTORE_PORT を読み込み
+// Reads EMULATOR_FIRESTORE_HOST, EMULATOR_FIRESTORE_PORT
 ```
 
 ### `@Value`
 
-プロパティに付与し、環境変数キーとデフォルト値を指定します：
+Apply to a stored property inside an `@Env` struct to declare its environment key and default:
 
 ```swift
 @Value("key.name", default: defaultValue)
 var propertyName: Type
 ```
 
-**サポート型**:
-- `String`: `config.string(forKey:default:)`
-- `Int`: `config.int(forKey:default:)`
-- `Double`: `config.double(forKey:default:)`
-- `Bool`: `config.bool(forKey:default:)`
+**Supported types**:
+- `String` — `config.string(forKey:default:)`
+- `Int` — `config.int(forKey:default:)`
+- `Double` — `config.double(forKey:default:)`
+- `Bool` — `config.bool(forKey:default:)`
+- `RawRepresentable where RawValue == String` — stored as the raw string, restored via `Type(rawValue:) ?? default`
 
-## 環境変数のマッピング
+### `@EnvGroup`
 
-キーは以下のルールで環境変数名に変換されます（swift-configuration準拠）：
+Groups multiple `@Env` structs and auto-generates `init(config:)` plus `static func load()`:
 
-| キー | 環境変数名 |
-|------|-----------|
+```swift
+@EnvGroup
+public struct AppConfig {
+    let gcp: GCPConfig
+    let server: ServerConfig
+}
+
+// Usage
+let app = AppConfig.load()
+print(app.gcp.projectId)
+```
+
+## Environment Variable Mapping
+
+Keys follow swift-configuration naming rules — dot-separated segments become `UPPER_SNAKE_CASE`:
+
+| Key | Environment variable |
+|-----|---------------------|
 | `gcp.project.id` | `GCP_PROJECT_ID` |
 | `server.port` | `SERVER_PORT` |
 | `feature.enabled` | `FEATURE_ENABLED` |
 
-スコープ付きの場合はプレフィックスが付与されます：
+With a scope, the scope name is prepended:
 
-| スコープ | キー | 環境変数名 |
-|---------|------|-----------|
+| Scope | Key | Environment variable |
+|-------|-----|---------------------|
 | `emulator` | `firestore.host` | `EMULATOR_FIRESTORE_HOST` |
 
-## 高度な使用例
+## Advanced Usage
 
-### 複数設定の組み合わせ
+### Combining Multiple Configs
 
 ```swift
 @Env
@@ -169,30 +188,29 @@ struct EmulatorConfig {
     var firestorePort: Int
 }
 
-// ファクトリパターン
-enum AppConfig {
-    static func makeReader() -> ConfigReader {
-        ConfigReader(provider: EnvironmentVariablesProvider())
-    }
+@EnvGroup
+public struct AppConfig {
+    let gcp: GCPConfig
+    let emulator: EmulatorConfig
 }
 
-// 依存性注入
-let config = AppConfig.makeReader()
-let gcp = GCPConfig(config: config)
-let emulator = EmulatorConfig(config: config)
+// Dependency injection
+let app = AppConfig.load()
+let gcp = app.gcp
+let emulator = app.emulator
 ```
 
-## 依存関係
+## Dependencies
 
-| パッケージ | 用途 |
-|-----------|------|
-| [swift-configuration](https://github.com/apple/swift-configuration) | 環境変数読み込み |
-| [swift-syntax](https://github.com/swiftlang/swift-syntax) | マクロ実装 |
+| Package | Purpose |
+|---------|---------|
+| [swift-configuration](https://github.com/apple/swift-configuration) | Reading environment variables |
+| [swift-syntax](https://github.com/swiftlang/swift-syntax) | Macro implementation |
 
-## ドキュメント
+## Documentation
 
-詳細なAPIドキュメントは [GitHub Pages](https://no-problem-dev.github.io/swift-env/documentation/env/) で確認できます。
+Full API documentation is available on [GitHub Pages](https://no-problem-dev.github.io/swift-env/documentation/env/).
 
-## ライセンス
+## License
 
-MIT License - 詳細は [LICENSE](LICENSE) を参照してください。
+MIT License — see [LICENSE](LICENSE) for details.

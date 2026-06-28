@@ -4,8 +4,8 @@
 
 /// 環境変数から初期化可能な型を表すプロトコル
 ///
-/// `@Env` マクロを適用した構造体は自動的にこのプロトコルに準拠します。
-/// `@EnvGroup` マクロはこのプロトコルを使用して、子の設定を初期化します。
+/// `@Env` マクロを適用した構造体は自動的にこのプロトコルに準拠する。
+/// `@EnvGroup` マクロはこのプロトコルを使用して子の設定を初期化する。
 ///
 /// ## 自動準拠
 ///
@@ -18,6 +18,8 @@
 /// ```
 public protocol EnvConfigurable: Sendable {
     /// ConfigReader から設定を読み込んで初期化
+    ///
+    /// - Parameter config: 値の取得に使用する ConfigReader（プロバイダ設定済みのもの）
     init(config: ConfigReader)
 }
 
@@ -25,7 +27,7 @@ public protocol EnvConfigurable: Sendable {
 
 /// 環境変数から型安全に値を読み取る構造体を定義するマクロ
 ///
-/// このマクロを構造体に適用すると、以下が自動生成されます:
+/// このマクロを構造体に適用すると、以下を自動生成する:
 /// - `init(config: ConfigReader)` イニシャライザ
 /// - 各プロパティのKeys enum（ConfigKey型）
 /// - 各プロパティのDefaults enum
@@ -44,7 +46,7 @@ public protocol EnvConfigurable: Sendable {
 /// }
 ///
 /// // 使用
-/// let config = AppConfig.makeReader()
+/// let config = ConfigReader(provider: EnvironmentVariablesProvider())
 /// let gcp = GCPConfig(config: config)
 /// print(gcp.projectId)  // 環境変数 GCP_PROJECT_ID または "my-project"
 /// ```
@@ -62,7 +64,7 @@ public protocol EnvConfigurable: Sendable {
 /// }
 ///
 /// // 使用（emulatorスコープが自動適用）
-/// let config = AppConfig.makeReader()
+/// let config = ConfigReader(provider: EnvironmentVariablesProvider())
 /// let emulator = EmulatorConfig(config: config)
 /// // 環境変数 EMULATOR_FIRESTORE_HOST, EMULATOR_FIRESTORE_PORT を読み取り
 /// ```
@@ -78,13 +80,13 @@ public macro Env(
 
 /// 環境変数の値を定義するマクロ
 ///
-/// `@Env`構造体内のプロパティに適用し、
-/// 環境変数のキーとデフォルト値を指定します。
+/// `@Env` 構造体内のプロパティに適用し、
+/// 環境変数のキーとデフォルト値を指定する。
 ///
 /// ## キー変換規則
 ///
-/// Swift Configurationの命名規則に従い、
-/// ドット区切りのキーはアンダースコア + 大文字に変換されます:
+/// Swift Configuration の命名規則に従い、
+/// ドット区切りのキーはアンダースコア + 大文字に変換される:
 ///
 /// - `gcp.project.id` → `GCP_PROJECT_ID`
 /// - `firebase.emulator` → `FIREBASE_EMULATOR`
@@ -137,7 +139,7 @@ public macro Value<T>(_ key: String, default: T) = #externalMacro(module: "EnvMa
 
 /// 複数の `@Env` 構造体をグループ化するマクロ
 ///
-/// このマクロを構造体に適用すると、以下が自動生成されます:
+/// このマクロを構造体に適用すると、以下を自動生成する:
 /// - `init(config: ConfigReader)` イニシャライザ
 /// - `static func load() -> Self` ファクトリメソッド
 /// - `EnvConfigurable` プロトコル準拠

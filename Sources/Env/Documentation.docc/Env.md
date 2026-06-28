@@ -5,7 +5,7 @@ Swiftマクロによる環境変数設定の宣言的アクセス。
 ## 概要
 
 Envは、Apple [swift-configuration](https://github.com/apple/swift-configuration) をラップし、
-`@Env` と `@Value` マクロによってボイラープレートを大幅に削減します。
+`@Env` と `@Value` マクロによってボイラープレートを大幅に削減する。
 
 従来の手動実装：
 
