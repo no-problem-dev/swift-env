@@ -1,4 +1,4 @@
-@_exported import Configuration
+import Configuration
 
 // MARK: - EnvConfigurable Protocol
 
