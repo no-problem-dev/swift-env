@@ -6,7 +6,7 @@ Swift の環境変数設定を宣言的に扱う。プロパティにキーと�
 イニシャライザはマクロが生成する。
 
 ![Swift 6.2+](https://img.shields.io/badge/Swift-6.2+-orange.svg)
-![Platforms](https://img.shields.io/badge/Platforms-macOS%20|%20iOS%20|%20tvOS%20|%20watchOS-blue.svg)
+![Platforms](https://img.shields.io/badge/Platforms-macOS%20|%20iOS%20|%20tvOS%20|%20watchOS%20%7C%20Linux-blue.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 
 ## 概要
