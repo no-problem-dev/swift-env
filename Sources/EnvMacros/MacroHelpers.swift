@@ -3,9 +3,10 @@ import SwiftSyntaxMacros
 
 // MARK: - Shared Macro Helpers
 
-/// マクロ属性から `scope:` 引数の値を抽出する
+/// Reads the `scope:` argument off `@Env` or `@EnvGroup`, or `nil` when it was omitted.
 ///
-/// `@Env(scope: "prefix")` や `@EnvGroup(scope: "prefix")` で共通利用。
+/// Only the first segment of the literal is read, so an interpolated scope silently truncates to
+/// its literal prefix.
 func extractScope(from node: AttributeSyntax) -> String? {
     guard let arguments = node.arguments?.as(LabeledExprListSyntax.self) else {
         return nil
@@ -22,7 +23,10 @@ func extractScope(from node: AttributeSyntax) -> String? {
     return nil
 }
 
-/// 計算プロパティを除いた保存プロパティかどうかを判定する
+/// Reports whether the declaration is a stored property rather than a computed one.
+///
+/// Detection is by the presence of a `get` accessor, so a property with only `willSet`/`didSet`
+/// is correctly treated as stored.
 func isStoredProperty(_ varDecl: VariableDeclSyntax) -> Bool {
     guard let binding = varDecl.bindings.first else {
         return false

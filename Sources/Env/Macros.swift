@@ -2,40 +2,57 @@ import Configuration
 
 // MARK: - EnvConfigurable Protocol
 
-/// 環境変数から初期化可能な型を表すプロトコル
+/// A configuration type whose values are all resolved once, at initialization, and never re-read.
 ///
-/// `@Env` マクロを適用した構造体は自動的にこのプロトコルに準拠する。
-/// `@EnvGroup` マクロはこのプロトコルを使用して子の設定を初期化する。
+/// `@Env` and `@EnvGroup` add this conformance automatically. `@EnvGroup` relies on it to
+/// initialize each of its children from the same reader.
 ///
-/// ## 自動準拠
-///
-/// ```swift
-/// @Env
-/// struct GCPConfig {  // 自動的に EnvConfigurable に準拠
-///     @Value("gcp.project.id", default: "my-project")
-///     var projectId: String
-/// }
-/// ```
+/// Because every value is copied into a stored property during `init(config:)`, changing an
+/// environment variable after initialization has no effect on an already-created instance.
+/// Re-read configuration by constructing a new instance.
 public protocol EnvConfigurable: Sendable {
-    /// ConfigReader から設定を読み込んで初期化
+    /// Resolves every declared value from the given reader and stores it.
     ///
-    /// - Parameter config: 値の取得に使用する ConfigReader（プロバイダ設定済みのもの）
+    /// - Parameter config: The reader to pull values from. Its provider chain alone decides where
+    ///   values come from and which source wins; this package neither merges nor orders sources.
     init(config: ConfigReader)
 }
 
 // MARK: - @Env Macro
 
-/// 環境変数から型安全に値を読み取る構造体を定義するマクロ
+/// Turns a struct into a configuration type that resolves each annotated property once, falling
+/// back to the declared default.
 ///
-/// このマクロを構造体に適用すると、以下を自動生成する:
-/// - `init(config: ConfigReader)` イニシャライザ
-/// - 各プロパティのKeys enum（ConfigKey型）
-/// - 各プロパティのDefaults enum
-/// - `EnvConfigurable` プロトコル準拠（`Sendable` を含む）
+/// Attach to a struct whose stored properties carry `@Value`. The macro generates:
+/// - `init(config: ConfigReader)`, which resolves every property in declaration order
+/// - a private `Keys` enum holding the `ConfigKey` for each property
+/// - a private `Defaults` enum holding the fallback value for each property
+/// - conformance to `EnvConfigurable` (and therefore `Sendable`)
 ///
-/// ## 基本的な使用例
+/// Properties without `@Value` are ignored, as are computed properties. A struct with no `@Value`
+/// property generates no initializer at all, which fails to compile because the conformance still
+/// requires one.
+///
+/// ## Resolution behavior
+///
+/// A key that is absent resolves to the declared default. So does a key whose value cannot be
+/// converted to the property's type — `SERVER_PORT=abc` yields the default, not an error. Nothing
+/// is logged and nothing is thrown, so a typo in a deployment environment is indistinguishable
+/// from an unset variable.
+///
+/// ## Secrets
+///
+/// Values are resolved without marking them secret, so an `AccessReporter` attached to the reader
+/// records them in cleartext. swift-configuration installs such a reporter automatically when the
+/// `CONFIG_ACCESS_LOG_FILE` environment variable is set. Do not route credentials through this
+/// macro in an environment where that variable may be set.
+///
+/// ## Example
 ///
 /// ```swift
+/// import Configuration
+/// import Env
+///
 /// @Env
 /// struct GCPConfig {
 ///     @Value("gcp.project.id", default: "my-project")
@@ -45,31 +62,14 @@ public protocol EnvConfigurable: Sendable {
 ///     var useEmulator: Bool
 /// }
 ///
-/// // 使用
 /// let config = ConfigReader(provider: EnvironmentVariablesProvider())
 /// let gcp = GCPConfig(config: config)
-/// print(gcp.projectId)  // 環境変数 GCP_PROJECT_ID または "my-project"
+/// print(gcp.projectId)  // GCP_PROJECT_ID, or "my-project" if unset
 /// ```
 ///
-/// ## スコープ付きの使用例
-///
-/// ```swift
-/// @Env(scope: "emulator")
-/// struct EmulatorConfig {
-///     @Value("firestore.host", default: "localhost")
-///     var firestoreHost: String
-///
-///     @Value("firestore.port", default: 8090)
-///     var firestorePort: Int
-/// }
-///
-/// // 使用（emulatorスコープが自動適用）
-/// let config = ConfigReader(provider: EnvironmentVariablesProvider())
-/// let emulator = EmulatorConfig(config: config)
-/// // 環境変数 EMULATOR_FIRESTORE_HOST, EMULATOR_FIRESTORE_PORT を読み取り
-/// ```
-///
-/// - Parameter scope: 環境変数のスコープ（プレフィックス）。省略時はルートレベル
+/// - Parameter scope: A prefix prepended to every key in this struct, so `firestore.host` under
+///   scope `emulator` reads `EMULATOR_FIRESTORE_HOST`. Callers still pass the unscoped reader;
+///   the generated initializer applies the scope itself. Omit to read at the root.
 @attached(member, names: named(Keys), named(Defaults), named(init))
 @attached(extension, conformances: EnvConfigurable)
 public macro Env(
@@ -78,44 +78,35 @@ public macro Env(
 
 // MARK: - @Value Macro
 
-/// 環境変数の値を定義するマクロ
+/// Declares which configuration key backs a property, and what it falls back to.
 ///
-/// `@Env` 構造体内のプロパティに適用し、
-/// 環境変数のキーとデフォルト値を指定する。
+/// Attach to a stored property of an `@Env` struct. The macro generates no code on its own; it
+/// carries the key and default that `@Env` reads when it builds the initializer.
 ///
-/// ## キー変換規則
+/// ## Key naming
 ///
-/// Swift Configuration の命名規則に従い、
-/// ドット区切りのキーはアンダースコア + 大文字に変換される:
+/// Keys are written dot-separated and mapped to environment variable names by
+/// swift-configuration's `EnvironmentVariablesProvider`, which uppercases each segment and joins
+/// them with underscores:
 ///
 /// - `gcp.project.id` → `GCP_PROJECT_ID`
 /// - `firebase.emulator` → `FIREBASE_EMULATOR`
 /// - `server.port` → `SERVER_PORT`
 ///
-/// ## 使用例
+/// A different provider maps the same key differently; the key, not the variable name, is what
+/// this macro declares.
 ///
-/// ```swift
-/// @Env
-/// struct ServerConfig {
-///     /// サーバーポート（環境変数: SERVER_PORT）
-///     @Value("server.port", default: 8080)
-///     var port: Int
+/// ## Supported types
 ///
-///     /// ホスト名（環境変数: SERVER_HOST）
-///     @Value("server.host", default: "0.0.0.0")
-///     var host: String
-/// }
-/// ```
+/// `String`, `Int`, `Double`, and `Bool` map to the reader's matching accessor. A
+/// `RawRepresentable` type with a `String` raw value is stored as its raw string and restored via
+/// `init(rawValue:)`, falling back to the default when the stored string matches no case. Any
+/// other type falls through to the string accessor and fails to compile with a type mismatch
+/// rather than a diagnostic naming the unsupported type.
 ///
-/// ## 対応する型
+/// For every supported type, a value that fails to convert resolves to the default silently.
 ///
-/// - `String`
-/// - `Int`
-/// - `Double`
-/// - `Bool`
-/// - `RawRepresentable where RawValue == String` (enum)
-///
-/// ## Enum の使用例
+/// ## Example
 ///
 /// ```swift
 /// enum AppEnvironment: String {
@@ -130,56 +121,53 @@ public macro Env(
 /// ```
 ///
 /// - Parameters:
-///   - key: 環境変数のキー（ドット区切り形式）
-///   - default: 環境変数が未設定の場合のデフォルト値
+///   - key: The dot-separated configuration key. Must be a string literal; the macro reads it at
+///     compile time and cannot see an interpolated or computed value.
+///   - default: The value used when the key is absent or its value cannot be converted.
 @attached(peer)
 public macro Value<T>(_ key: String, default: T) = #externalMacro(module: "EnvMacros", type: "ValueMacro")
 
 // MARK: - @EnvGroup Macro
 
-/// 複数の `@Env` 構造体をグループ化するマクロ
+/// Assembles several configuration structs into one, and adds a factory that reads the process
+/// environment.
 ///
-/// このマクロを構造体に適用すると、以下を自動生成する:
-/// - `init(config: ConfigReader)` イニシャライザ
-/// - `static func load() -> Self` ファクトリメソッド
-/// - `EnvConfigurable` プロトコル準拠
+/// Attach to a struct whose stored properties are themselves `@Env` or `@EnvGroup` types. The
+/// macro generates:
+/// - `init(config: ConfigReader)`, which initializes every child from the same reader
+/// - `static func load() -> Self`, which builds its own reader over the process environment
+/// - conformance to `EnvConfigurable`
 ///
-/// ## 基本的な使用例
+/// Every stored property is treated as a child regardless of its type, so a property that is not
+/// `EnvConfigurable` fails to compile inside the generated initializer.
+///
+/// ## Choosing between `load()` and `init(config:)`
+///
+/// `load()` always reads the process environment and ignores any other source, which makes it
+/// unsuitable for tests and for applications that layer in a file or a remote provider. Pass an
+/// explicit reader to `init(config:)` in those cases.
+///
+/// Code calling `load()` must `import Configuration`; the generated body names
+/// `EnvironmentVariablesProvider`, which importing this module alone does not bring into scope.
+///
+/// ## Example
 ///
 /// ```swift
+/// import Configuration
+/// import Env
+///
 /// @EnvGroup
 /// public struct AppConfig {
 ///     let gcp: GCPConfig
 ///     let emulator: EmulatorConfig
-///     let server: ServerConfig
 /// }
 ///
-/// // 使用
-/// let config = AppConfig.load()
-/// print(config.gcp.projectId)
+/// let app = AppConfig.load()
+/// print(app.gcp.projectId)
 /// ```
 ///
-/// ## スコープ付きの使用例
-///
-/// ```swift
-/// @EnvGroup(scope: "database")
-/// struct DatabaseConfig {
-///     let primary: PrimaryDBConfig   // DATABASE_PRIMARY_* を読む
-///     let replica: ReplicaDBConfig   // DATABASE_REPLICA_* を読む
-/// }
-/// ```
-///
-/// ## ネストした使用例
-///
-/// ```swift
-/// @EnvGroup
-/// public struct AppConfig {
-///     let gcp: GCPConfig
-///     let database: DatabaseConfig  // ネストされた EnvGroup
-/// }
-/// ```
-///
-/// - Parameter scope: 環境変数のスコープ（プレフィックス）。省略時はルートレベル
+/// - Parameter scope: A prefix prepended to every child's keys, so a child of
+///   `@EnvGroup(scope: "database")` reads `DATABASE_*`. Omit to read at the root.
 @attached(member, names: named(init), named(load))
 @attached(extension, conformances: EnvConfigurable)
 public macro EnvGroup(

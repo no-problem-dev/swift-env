@@ -3,18 +3,16 @@ import SwiftSyntaxMacros
 
 // MARK: - ValueMacro
 
-/// `@Value`マクロの実装
+/// Implements `@Value` as a marker that carries a key and a default for `@Env` to read.
 ///
-/// このマクロはプロパティに付与され、環境変数のキーとデフォルト値を
-/// `@Env`マクロに伝達します。このマクロ自体はコードを生成しません。
+/// Declared as a peer macro purely so the attribute is legal on a property; it deliberately
+/// generates nothing, and applying it outside an `@Env` struct therefore has no effect at all.
 public struct ValueMacro: PeerMacro {
     public static func expansion(
         of node: AttributeSyntax,
         providingPeersOf declaration: some DeclSyntaxProtocol,
         in context: some MacroExpansionContext
     ) throws -> [DeclSyntax] {
-        // @Valueはマーカーとして機能し、コード生成は行わない
-        // 実際の処理は@EnvMacroが行う
         return []
     }
 }

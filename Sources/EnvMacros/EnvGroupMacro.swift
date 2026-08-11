@@ -3,12 +3,8 @@ import SwiftSyntaxMacros
 
 // MARK: - EnvGroupMacro
 
-/// `@EnvGroup`マクロの実装
-///
-/// このマクロは構造体に付与され、以下を生成します:
-/// - `init(config: ConfigReader)` イニシャライザ
-/// - `static func load() -> Self` ファクトリメソッド
-/// - `EnvConfigurable` プロトコル準拠
+/// Implements `@EnvGroup`, generating an initializer that forwards one reader to every child and
+/// a `load()` factory that builds a reader over the process environment.
 public struct EnvGroupMacro {}
 
 // MARK: - MemberMacro
@@ -20,27 +16,24 @@ extension EnvGroupMacro: MemberMacro {
         conformingTo protocols: [TypeSyntax],
         in context: some MacroExpansionContext
     ) throws -> [DeclSyntax] {
-        // 構造体であることを確認
         guard let structDecl = declaration.as(StructDeclSyntax.self) else {
             throw MacroError.requiresStruct
         }
 
-        // scopeを取得
         let scope = extractScope(from: node)
 
-        // プロパティ情報を収集
         let properties = collectProperties(from: structDecl)
 
+        // An empty struct generates neither member, while the extension macro still adds the
+        // conformance that requires the initializer.
         guard !properties.isEmpty else {
             return []
         }
 
         var members: [DeclSyntax] = []
 
-        // initを生成
         members.append(generateInit(properties: properties, scope: scope))
 
-        // load()を生成
         members.append(generateLoad())
 
         return members
@@ -48,7 +41,10 @@ extension EnvGroupMacro: MemberMacro {
 
     // MARK: - Private Helpers
 
-    /// 構造体のプロパティ情報を収集
+    /// Collects every stored property as a child.
+    ///
+    /// Nothing checks that the property's type is `EnvConfigurable`; a type that is not one fails
+    /// to compile inside the generated initializer instead of being diagnosed here.
     private static func collectProperties(from structDecl: StructDeclSyntax) -> [GroupPropertyInfo] {
         var properties: [GroupPropertyInfo] = []
 
@@ -57,12 +53,10 @@ extension EnvGroupMacro: MemberMacro {
                 continue
             }
 
-            // 計算プロパティは除外
             guard isStoredProperty(varDecl) else {
                 continue
             }
 
-            // プロパティ名と型を取得
             guard let binding = varDecl.bindings.first,
                   let pattern = binding.pattern.as(IdentifierPatternSyntax.self),
                   let typeAnnotation = binding.typeAnnotation else {
@@ -81,13 +75,11 @@ extension EnvGroupMacro: MemberMacro {
         return properties
     }
 
-    /// initを生成
     private static func generateInit(properties: [GroupPropertyInfo], scope: String?) -> DeclSyntax {
         var lines: [String] = []
 
         lines.append("public init(config: ConfigReader) {")
 
-        // scopeがある場合はscopedReaderを作成
         if let scope = scope {
             lines.append("    let scopedConfig = config.scoped(to: \"\(scope)\")")
         }
@@ -103,7 +95,10 @@ extension EnvGroupMacro: MemberMacro {
         return DeclSyntax(stringLiteral: lines.joined(separator: "\n"))
     }
 
-    /// load()を生成
+    /// Emits `load()`, which reads the process environment and nothing else.
+    ///
+    /// The body names `EnvironmentVariablesProvider`, so calling code must `import Configuration`
+    /// even though it only imported this package's public module.
     private static func generateLoad() -> DeclSyntax {
         return DeclSyntax(stringLiteral: """
             public static func load() -> Self {
@@ -138,7 +133,7 @@ extension EnvGroupMacro: ExtensionMacro {
 
 // MARK: - Supporting Types
 
-/// EnvGroupプロパティ情報
+/// One child of an `@EnvGroup`, reduced to the strings the generated initializer is built from.
 struct GroupPropertyInfo {
     let name: String
     let typeName: String

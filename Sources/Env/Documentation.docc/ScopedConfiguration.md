@@ -1,17 +1,17 @@
-# スコープ付き設定
+# Scoped Configuration
 
-キープレフィックスを持つ設定グループの定義方法を学ぶ。
+Group related keys behind a shared prefix.
 
-## 概要
+## Overview
 
-関連する設定をグループ化する場合、`@Env(scope:)` を使用して
-キープレフィックスを指定できる。
+A scope is a prefix applied to every key in a struct. It keeps related settings together without
+repeating the prefix on each `@Value`, and it lets the same struct be read twice under different
+prefixes.
 
-## スコープの使い方
-
-### スコープ付き設定の定義
+## Declaring a scoped struct
 
 ```swift
+import Configuration
 import Env
 
 @Env(scope: "emulator")
@@ -30,32 +30,26 @@ struct EmulatorConfig {
 }
 ```
 
-### 環境変数との対応
+The scope is prepended before the provider maps the key to a variable name:
 
-`scope: "emulator"` を指定すると、以下のように環境変数名が生成される：
-
-| キー | 環境変数名 |
+| Key | Environment variable |
 |---|---|
 | `firestore.host` | `EMULATOR_FIRESTORE_HOST` |
 | `firestore.port` | `EMULATOR_FIRESTORE_PORT` |
 | `auth.host` | `EMULATOR_AUTH_HOST` |
 | `auth.port` | `EMULATOR_AUTH_PORT` |
 
-### 使用方法
+## Reading it
 
 ```swift
 let config = ConfigReader(provider: EnvironmentVariablesProvider())
-
-// root config を渡す（スコープは内部で処理される）
 let emulator = EmulatorConfig(config: config)
-
-print("Firestore: \(emulator.firestoreHost):\(emulator.firestorePort)")
-print("Auth: \(emulator.authHost):\(emulator.authPort)")
 ```
 
-## 展開されるコード
+Pass the unscoped reader. The generated initializer calls `scoped(to:)` itself, so scoping the
+reader before handing it over applies the prefix twice.
 
-`@Env(scope: "emulator")` は以下のようなコードを生成する：
+## What the macro generates
 
 ```swift
 struct EmulatorConfig {
@@ -90,35 +84,27 @@ struct EmulatorConfig {
 extension EmulatorConfig: EnvConfigurable {}
 ```
 
-## 複数設定の組み合わせ
+Note that `Keys` stores the unscoped key. The prefix is applied by the reader at read time, not
+baked into the key table.
+
+## Scoping a whole group
+
+``EnvGroup(scope:)`` takes the same argument and passes the scoped reader to every child, so each
+child's keys nest under the group's prefix:
 
 ```swift
-@Env
-struct GCPConfig {
-    @Value("gcp.project.id", default: "stockle-app")
-    var projectId: String
-
-    @Value("firebase.emulator", default: false)
-    var useEmulator: Bool
+@Env(scope: "primary")
+struct PrimaryDBConfig {
+    @Value("host", default: "localhost")
+    var host: String
 }
 
-@Env(scope: "emulator")
-struct EmulatorConfig {
-    @Value("firestore.host", default: "localhost")
-    var firestoreHost: String
-
-    @Value("firestore.port", default: 8090)
-    var firestorePort: Int
-}
-
-// 使用例
-let config = ConfigReader(provider: EnvironmentVariablesProvider())
-let gcp = GCPConfig(config: config)
-let emulator = EmulatorConfig(config: config)
-
-if gcp.useEmulator {
-    print("Emulator: \(emulator.firestoreHost):\(emulator.firestorePort)")
-} else {
-    print("Production: \(gcp.projectId)")
+@EnvGroup(scope: "database")
+struct DatabaseConfig {
+    let primary: PrimaryDBConfig
 }
 ```
+
+`host` is read as `DATABASE_PRIMARY_HOST`: the group contributes `database`, the child contributes
+`primary`. A child declared without its own scope contributes nothing, so its `host` would be read
+as `DATABASE_HOST`.

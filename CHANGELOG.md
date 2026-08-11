@@ -1,87 +1,97 @@
 # Changelog
 
-このプロジェクトのすべての注目すべき変更はこのファイルに記録されます。
+All notable changes to this project are recorded in this file.
 
-フォーマットは [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に基づいており、
-このプロジェクトは [Semantic Versioning](https://semver.org/lang/ja/) に従います。
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [未リリース]
+## [Unreleased]
 
-なし
+### Removed
+
+- The `@_exported` re-export of swift-configuration. Code naming `ConfigReader`, `ConfigKey`, or
+  `EnvironmentVariablesProvider` — including anything calling the generated `load()` — must now
+  `import Configuration` alongside `import Env`.
+
+### Added
+
+- `.spi.yml`, so Swift Package Index builds and hosts the DocC documentation
+- `CONTRIBUTING.md`
+- `scripts/release.sh` and `scripts/compute-next-version.sh`, which derive the next version from
+  the public API diff and stamp it into this file
+
+### Changed
+
+- CI no longer builds or tests; it creates a GitHub Release from a pushed tag. Verification runs
+  locally before pushing.
+
+## [1.0.4] - 2026-07-19
+
+### Changed
+
+- Moved the `scope:` and stored-property helpers shared by `@Env` and `@EnvGroup` into
+  `MacroHelpers.swift`
+- DocC is built on macOS 26 / Xcode 26 (Swift 6.2) and published to GitHub Pages via
+  `actions/deploy-pages`
+- Rewrote doc comments and the DocC catalog in Japanese, and split the README into English and
+  Japanese editions
+
+### Removed
+
+- The `missingValueAttribute`, `invalidValueArguments`, and `unsupportedType` error cases, none of
+  which were ever thrown
+- The auto-release-on-merge workflow, replaced by a tag-triggered release
+
+### Fixed
+
+- The macro expansion example in the README
 
 ## [1.0.3] - 2026-01-02
 
-### 変更
+### Changed
 
-- **依存関係指定を `.upToNextMajor` に統一**
+- Unified dependency requirements on `.upToNextMajor`
 
 ## [1.0.2] - 2026-01-02
 
-### 変更
+### Added
 
-- **Swift 6.2 対応**: Swift 6.2 安定版に対応
-  - `swift-tools-version`: 6.0 → 6.2
-  - `swift-syntax`: 600.0.0 → 602.0.0
+- Linux x86_64 tests, run in the `swift:6.2-bookworm` container
 
-### CI
+### Changed
 
-- **Linux x86_64 テスト追加**: `swift:6.2-bookworm` コンテナでテスト実行
+- Swift 6.2 support: `swift-tools-version` 6.0 → 6.2, swift-syntax 600.0.0 → 602.0.0
 
 ## [1.0.1] - 2026-01-02
 
-### 追加
+### Added
 
-- **`@EnvGroup` マクロ**: 複数の `@Env` 構造体を集約するファサード構造体を生成
-  - `static func load()` メソッドを自動生成し、全ネスト設定を一括読み込み
-  - ネストした `@Env` および `@EnvGroup` 構造体をサポート
-  - 統一されたエントリーポイントでアプリケーション設定を簡潔に管理
+- `@EnvGroup` macro, generating a facade struct that aggregates several `@Env` structs
+  - `static func load()` reads every nested configuration in one call
+  - Nested `@Env` and `@EnvGroup` structs are supported
+- Macro expansion tests for `@EnvGroup`
 
-### テスト
+## [1.0.0] - 2026-01-02
 
-- EnvGroup マクロ展開テスト追加
+### Added
 
-## [1.0.0] - 2025-01-02
+- `@Env` macro, generating from a struct:
+  - a `Keys` enum of `ConfigKey` static properties
+  - a `Defaults` enum of default-value static properties
+  - an `init(config: ConfigReader)` initializer
+  - `Sendable` conformance
+  - a `scope` parameter for key prefixes
+- `@Value` macro, declaring a property's configuration key and default value
+  - `String`, `Int`, `Double`, and `Bool` support
+  - Dot-separated keys, mapped to environment variable names (`"gcp.project.id"` → `GCP_PROJECT_ID`)
+- Re-export of Apple swift-configuration 1.0, exposing `ConfigReader`, `ConfigKey`, and
+  `EnvironmentVariablesProvider`
+- 11 macro expansion tests covering primitive types, multiple properties, scopes, and edge cases
+- README, RELEASE_PROCESS.md, and the DocC catalog
 
-### 追加
-
-- **`@Env` マクロ**: 構造体に付与して環境変数設定を自動生成
-  - `Keys` enum（ConfigKey型の静的プロパティ）を自動生成
-  - `Defaults` enum（デフォルト値の静的プロパティ）を自動生成
-  - `init(config: ConfigReader)` イニシャライザを自動生成
-  - `Sendable` プロトコル準拠を自動追加
-  - `scope` パラメータでスコープ設定をサポート
-
-- **`@Value` マクロ**: プロパティに付与して環境変数キーとデフォルト値を指定
-  - String, Int, Double, Bool 型をサポート
-  - 環境変数キーをドット区切りで指定（例: `"gcp.project.id"` → `GCP_PROJECT_ID`）
-
-- **Apple swift-configuration 1.0 の再エクスポート**
-  - `ConfigReader`, `ConfigKey`, `EnvironmentVariablesProvider` 等を利用可能
-
-### テスト
-
-- 11種類のマクロ展開テスト
-  - 基本型テスト（String, Int, Double, Bool）
-  - 複数プロパティテスト
-  - スコープ付きテスト
-  - エッジケーステスト
-
-### ドキュメント
-
-- README.md（日本語）
-- RELEASE_PROCESS.md
-- DocCドキュメント
-
-[未リリース]: https://github.com/no-problem-dev/swift-env/compare/v1.0.3...HEAD
+[Unreleased]: https://github.com/no-problem-dev/swift-env/compare/1.0.4...HEAD
+[1.0.4]: https://github.com/no-problem-dev/swift-env/compare/v1.0.3...1.0.4
 [1.0.3]: https://github.com/no-problem-dev/swift-env/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/no-problem-dev/swift-env/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/no-problem-dev/swift-env/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/no-problem-dev/swift-env/releases/tag/v1.0.0
-
-<!-- Release v1.0.0 prepared on 2026-01-02T03:18:58Z -->
-
-<!-- Auto-generated on 2026-01-02T04:14:21Z by release workflow -->
-
-<!-- Auto-generated on 2026-01-02T04:26:04Z by release workflow -->
-
-<!-- Auto-generated on 2026-01-02T07:00:57Z by release workflow -->

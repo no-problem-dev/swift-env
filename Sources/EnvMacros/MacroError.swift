@@ -1,6 +1,6 @@
 import Foundation
 
-/// マクロ展開時のエラー
+/// A failure raised during macro expansion and surfaced to the caller as a compiler error.
 enum MacroError: Error, CustomStringConvertible {
     case requiresStruct
     case message(String)

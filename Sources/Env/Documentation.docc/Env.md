@@ -1,13 +1,14 @@
 # ``Env``
 
-Swiftマクロによる環境変数設定の宣言的アクセス。
+Declarative access to environment variable configuration, through Swift macros.
 
-## 概要
+## Overview
 
-Envは、Apple [swift-configuration](https://github.com/apple/swift-configuration) をラップし、
-`@Env` と `@Value` マクロによってボイラープレートを大幅に削減する。
+Env wraps Apple's [swift-configuration](https://github.com/apple/swift-configuration) so that a
+configuration struct declares only its keys and defaults. The key table, the default table, and
+the initializer are generated at compile time.
 
-従来の手動実装：
+Written by hand, a configuration struct repeats itself three times:
 
 ```swift
 struct GCPConfig: Sendable {
@@ -31,7 +32,7 @@ struct GCPConfig: Sendable {
 }
 ```
 
-マクロを使用した宣言的実装：
+Declared with the macros, the same struct states each fact once:
 
 ```swift
 @Env
@@ -44,19 +45,56 @@ struct GCPConfig {
 }
 ```
 
+### Where values come from
+
+This package does not read the environment and does not merge sources. It generates calls against
+the `ConfigReader` you hand it, so that reader's provider chain alone decides which source wins.
+The one exception is `load()` on an ``EnvGroup(scope:)`` type, which builds its own reader over the
+process environment and consults nothing else.
+
+### When values are read
+
+Every value is resolved once, inside `init(config:)`, and copied into a stored property. Changing
+an environment variable afterwards does not affect an instance that already exists; construct a
+new one to re-read.
+
+### What happens to a bad value
+
+A key that is absent resolves to its declared default. So does a key whose value cannot be
+converted to the property's type: `SERVER_PORT=abc` yields the default rather than an error.
+Nothing is thrown and nothing is logged, so a misspelled value in a deployment environment looks
+exactly like an unset one.
+
+### Secrets
+
+Values are resolved without being marked secret. Any `AccessReporter` attached to the reader
+therefore records them in cleartext — including the file reporter swift-configuration installs on
+its own when the `CONFIG_ACCESS_LOG_FILE` environment variable is set. Read credentials directly
+through swift-configuration's `isSecret:` parameter instead of declaring them with ``Value(_:default:)``.
+
+### Importing
+
+Code that constructs a reader, or that calls the generated `load()`, must import both modules.
+Importing `Env` alone does not bring `EnvironmentVariablesProvider` into scope:
+
+```swift
+import Configuration
+import Env
+```
+
 ## Topics
 
-### マクロ
+### Declaring configuration
 
 - ``Env(scope:)``
 - ``Value(_:default:)``
+
+### Composing configuration
+
 - ``EnvGroup(scope:)``
-
-### プロトコル
-
 - ``EnvConfigurable``
 
-### 使用例
+### Guides
 
 - <doc:GettingStarted>
 - <doc:ScopedConfiguration>
