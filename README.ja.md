@@ -61,7 +61,7 @@ import は両方必要。`Env` がマクロを、`Configuration` が生成コー
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/no-problem-dev/swift-env.git", from: "1.0.0")
+    .package(url: "https://github.com/no-problem-dev/swift-env.git", from: "2.0.0")
 ]
 ```
 

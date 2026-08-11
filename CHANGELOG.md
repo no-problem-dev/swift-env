@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-08-11
+
 ### Removed
 
 - The `@_exported` re-export of swift-configuration. Code naming `ConfigReader`, `ConfigKey`, or
