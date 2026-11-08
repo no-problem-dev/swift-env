@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-11-08
+
+### Changed
+
+- swift-docc-plugin への依存を外した（DocC は Xcode で開く）
+
 ## [2.0.0] - 2026-08-11
 
 ### Removed
@@ -91,7 +97,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - 11 macro expansion tests covering primitive types, multiple properties, scopes, and edge cases
 - README, RELEASE_PROCESS.md, and the DocC catalog
 
-[Unreleased]: https://github.com/no-problem-dev/swift-env/compare/1.0.4...HEAD
+[Unreleased]: https://github.com/no-problem-dev/swift-env/compare/2.0.1...HEAD
+[2.0.1]: https://github.com/no-problem-dev/swift-env/compare/2.0.0...2.0.1
 [1.0.4]: https://github.com/no-problem-dev/swift-env/compare/v1.0.3...1.0.4
 [1.0.3]: https://github.com/no-problem-dev/swift-env/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/no-problem-dev/swift-env/compare/v1.0.1...v1.0.2
