@@ -52,7 +52,7 @@ import は両方必要。`Env` がマクロを、`Configuration` が生成コー
 
 ## ドキュメント
 
-[API リファレンスとガイド](https://no-problem-dev.github.io/swift-env/documentation/env/) — キーの
+[API リファレンスとガイド](Sources/Env/Documentation.docc) — キーの
 命名規則、スコープ付き設定、`@EnvGroup` による複数構造体の合成。
 
 ## インストール

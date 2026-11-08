@@ -54,7 +54,7 @@ provider types the generated code names.
 
 ## Documentation
 
-[API reference and guides](https://no-problem-dev.github.io/swift-env/documentation/env/) — key
+[API reference and guides](Sources/Env/Documentation.docc) — key
 naming, scoped configuration, and composing several structs with `@EnvGroup`.
 
 ## Installation
